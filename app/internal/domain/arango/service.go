@@ -131,7 +131,7 @@ func (s *Service) authorize(ctx context.Context) (*http.Cookie, error) {
 	form := url.Values{}
 	form.Add("login", s.cfg.Kpi.Username)
 	form.Add("password", s.cfg.Kpi.Password)
-	cookies, i, err := s.httpClient.CookieAuthorize(context.Background(), "auth/login", nil, form, nil)
+	cookies, i, err := s.httpClient.CookieAuthorize(ctx, "auth/login", nil, form, nil)
 	if err != nil {
 		return nil, err
 	}
