@@ -1,6 +1,9 @@
 package arango
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type eventRequestBody struct {
 	Filter struct {
@@ -30,6 +33,32 @@ func newEventRequestBody(field eventRequestBodyFilterField, sortFields []string,
 	return reqBody
 }
 
+type arangoDate struct {
+	time *time.Time
+}
+
+func (e *arangoDate) UnmarshalJSON(b []byte) error {
+	value := strings.Trim(string(b), `"`) //get rid of "
+	if value == "" || value == "null" {
+		return nil
+	}
+
+	t, err := time.Parse("2006-01-02", value) //parse time
+	if err != nil {
+		return err
+	}
+	e.time = &t //set result using the pointer
+	return nil
+}
+
+func (e arangoDate) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + e.time.Format("2006-01-02") + `"`), nil
+}
+
+func (e arangoDate) String() string {
+	return e.time.Format("2006-01-02")
+}
+
 type eventResponseBody struct {
 	Data struct {
 		Rows []eventResponseBodyRow `json:"rows"`
@@ -57,8 +86,8 @@ type eventResponseBodyAuthor struct {
 }
 
 type eventResponseBodyPeriod struct {
-	End     string `json:"end"`
-	Start   string `json:"start"`
-	TypeId  int    `json:"type_id"`
-	TypeKey string `json:"type_key"`
+	End     arangoDate `json:"end"`
+	Start   arangoDate `json:"start"`
+	TypeId  int        `json:"type_id"`
+	TypeKey string     `json:"type_key"`
 }

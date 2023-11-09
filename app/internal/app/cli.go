@@ -24,7 +24,7 @@ func NewCli(config *config.Config) Cli {
 }
 
 func (app *Cli) Start() {
-	err := app.arangoService.Process()
+	err := app.arangoService.FetchDataAndSave()
 	if err != nil {
 		log.Fatalf(err.Error())
 	}

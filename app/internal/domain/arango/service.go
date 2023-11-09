@@ -24,13 +24,16 @@ func NewService(cfg *config.Config) *Service {
 	return &Service{cfg: cfg, httpClient: http_client.NewClient("https://development.kpi-drive.ru/_api/", nil), cache: cache.New(10*time.Minute, 10*time.Minute)}
 }
 
-func (s *Service) Process() error {
+func (s *Service) FetchDataAndSave() error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Minute*2)
 	data, err := s.getData(ctx)
 	if err != nil {
 		return err
 	}
 	for _, v := range data {
+		marshal, _ := json.Marshal(v)
+
+		log.Println(fmt.Sprintf("EVENT RESPONSE:\n %s", string(marshal)))
 		err := s.saveData(ctx, v)
 		if err != nil {
 			log.Println(err)
@@ -41,13 +44,9 @@ func (s *Service) Process() error {
 }
 
 func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error {
-	form := url.Values{}
-	form.Add("period_start", row.Params.Period.Start)
-	form.Add("period_end", row.Params.Period.End)
-	form.Add("period_key", row.Params.Period.TypeKey)
-	form.Add("indicator_to_mo_id", strconv.Itoa(row.Params.IndicatorToMoId))
-	form.Add("indicator_to_mod_fact_id", strconv.Itoa(row.Params.IndicatorToMoId))
-	form.Add("fact_time", "2023-08-11")
+	factTime := arangoDate{time: &row.Time}
+	//fmt.Println(today.String())
+
 	tag := superTagBody{
 		Tag: tagBody{
 			Id:           row.Author.UserId,
@@ -61,7 +60,20 @@ func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error 
 	if err != nil {
 		return err
 	}
+
+	params, _ := json.Marshal(row.Params)
+
+	form := url.Values{}
+	form.Add("period_start", row.Params.Period.Start.String())
+	form.Add("period_end", row.Params.Period.End.String())
+	form.Add("period_key", row.Params.Period.TypeKey)
+	form.Add("indicator_to_mo_id", strconv.Itoa(row.Params.IndicatorToMoId))
+	form.Add("indicator_to_mod_fact_id", "0")
+	form.Add("fact_time", factTime.String())
 	form.Add("supertags", string(marshaledTag))
+	form.Add("auth_user_id", "40")
+	form.Add("comment", string(params))
+	fmt.Println(form)
 
 	cookie, err := s.authorize(ctx)
 	if err != nil {
@@ -70,7 +82,7 @@ func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error 
 	resp := map[string]interface{}{}
 	_, err = s.httpClient.PostFormDataCookie(ctx, "facts/save_fact", nil, form, &resp, cookie)
 	for s2, i := range resp {
-		fmt.Println(s2, i)
+		log.Println(s2, i)
 	}
 
 	return nil
@@ -98,9 +110,7 @@ func (s *Service) getData(ctx context.Context) ([]eventResponseBodyRow, error) {
 	fmt.Println(newEventRequestBody(field, []string{"time"}, "DESC", 10))
 	resp := eventResponseBody{}
 	_, err = s.httpClient.GetJsonCookie(ctx, "events", nil, jsonBody, &resp, cookie)
-	for s2, s3 := range resp.Data.Rows {
-		fmt.Println(s2, s3)
-	}
+
 	return resp.Data.Rows, nil
 }
 
