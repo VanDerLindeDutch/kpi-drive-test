@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -50,7 +49,7 @@ func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error 
 	tag := superTagBody{
 		Tag: tagBody{
 			Id:           row.Author.UserId,
-			Name:         row.Author.UserName,
+			Name:         "Клиент",
 			Key:          "client",
 			ValuesSource: 0,
 		},
@@ -67,13 +66,14 @@ func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error 
 	form.Add("period_start", row.Params.Period.Start.String())
 	form.Add("period_end", row.Params.Period.End.String())
 	form.Add("period_key", row.Params.Period.TypeKey)
-	form.Add("indicator_to_mo_id", strconv.Itoa(row.Params.IndicatorToMoId))
+	form.Add("indicator_to_mo_id", "315914")
 	form.Add("indicator_to_mod_fact_id", "0")
 	form.Add("fact_time", factTime.String())
+	form.Add("is_plan", "0")
+	form.Add("value", "1")
 	form.Add("supertags", string(marshaledTag))
 	form.Add("auth_user_id", "40")
 	form.Add("comment", string(params))
-	fmt.Println(form)
 
 	cookie, err := s.authorize(ctx)
 	if err != nil {
@@ -103,7 +103,6 @@ func (s *Service) getData(ctx context.Context) ([]eventResponseBodyRow, error) {
 	reqBody := newEventRequestBody(field, []string{"time"}, "DESC", 10)
 
 	jsonBody, err := json.Marshal(reqBody)
-	fmt.Println(string(jsonBody))
 	if err != nil {
 		return nil, err
 	}
