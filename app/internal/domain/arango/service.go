@@ -81,9 +81,9 @@ func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error 
 	}
 	resp := map[string]interface{}{}
 	_, err = s.httpClient.PostFormDataCookie(ctx, "facts/save_fact", nil, form, &resp, cookie)
-	for s2, i := range resp {
-		log.Println(s2, i)
-	}
+	respData := resp["DATA"]
+	parsedData := respData.(map[string]interface{})
+	log.Println(fmt.Sprintf("Indicator id: %v", parsedData["indicator_to_mo_fact_id"]))
 
 	return nil
 
