@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -29,20 +30,27 @@ func (s *Service) FetchDataAndSave() error {
 	if err != nil {
 		return err
 	}
+	wg := sync.WaitGroup{}
+	wg.Add(len(data))
 	for _, v := range data {
-		marshal, _ := json.Marshal(v)
+		go func(v eventResponseBodyRow) {
+			defer wg.Done()
 
-		log.Println(fmt.Sprintf("EVENT RESPONSE:\n %s", string(marshal)))
-		err := s.saveData(ctx, v)
-		if err != nil {
-			log.Println(err)
-		}
+			err := s.saveData(ctx, v)
+			if err != nil {
+				log.Println("ERROR :", err)
+			}
+
+		}(v)
+
 	}
+	wg.Wait()
 	return nil
 
 }
 
 func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error {
+
 	factTime := arangoDate{time: &row.Time}
 	//fmt.Println(today.String())
 
@@ -83,6 +91,9 @@ func (s *Service) saveData(ctx context.Context, row eventResponseBodyRow) error 
 	_, err = s.httpClient.PostFormDataCookie(ctx, "facts/save_fact", nil, form, &resp, cookie)
 	respData := resp["DATA"]
 	parsedData := respData.(map[string]interface{})
+
+	marshal, _ := json.MarshalIndent(row, "", "    ")
+	log.Println(fmt.Sprintf("EVENT RESPONSE:\n %s", string(marshal)))
 	log.Println(fmt.Sprintf("Indicator id: %v", parsedData["indicator_to_mo_fact_id"]))
 
 	return nil
@@ -106,7 +117,6 @@ func (s *Service) getData(ctx context.Context) ([]eventResponseBodyRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(newEventRequestBody(field, []string{"time"}, "DESC", 10))
 	resp := eventResponseBody{}
 	_, err = s.httpClient.GetJsonCookie(ctx, "events", nil, jsonBody, &resp, cookie)
 
