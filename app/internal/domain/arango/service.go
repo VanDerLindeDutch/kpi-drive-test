@@ -21,7 +21,7 @@ type Service struct {
 }
 
 func NewService(cfg *config.Config) *Service {
-	return &Service{cfg: cfg, httpClient: http_client.NewClient("https://development.kpi-drive.ru/_api/", nil), cache: cache.New(10*time.Minute, 10*time.Minute)}
+	return &Service{cfg: cfg, httpClient: http_client.NewClient(cfg.Kpi.BaseUrl, nil), cache: cache.New(10*time.Minute, 10*time.Minute)}
 }
 
 func (s *Service) FetchDataAndSave() error {
